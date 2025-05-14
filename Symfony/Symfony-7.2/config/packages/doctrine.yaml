@@ -1,0 +1,34 @@
+doctrine:
+    dbal:
+        default_connection: gestfy
+        connections:
+            gestfy:
+                url: '%env(DATABASE_URL)%'
+                charset: UTF8
+                server_version: '5.7'
+    orm:
+        auto_generate_proxy_classes: false
+        naming_strategy: doctrine.orm.naming_strategy.underscore
+        auto_mapping: false
+        mappings:
+            VozFusion:
+                is_bundle: false
+                type: attribute
+                dir: '%kernel.project_dir%/src/VozFusion/Domain/Entity'
+                prefix: 'App\VozFusion\Domain\Entity'
+                alias: VozFusionEntity
+        result_cache_driver:
+            type: pool
+            pool: doctrine.result_cache_pool
+        second_level_cache:
+            enabled: true
+            region_cache_driver:
+                type: pool
+                pool: doctrine.second_level_cache_pool
+            regions:
+                fact_cliente:
+                    lifetime: 300
+                confcallejero_region:
+                    lifetime: 300
+                intServiciosCliente_region:
+                    lifetime: 300

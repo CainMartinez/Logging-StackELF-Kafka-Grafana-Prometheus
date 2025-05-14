@@ -1,0 +1,54 @@
+security:
+    # https://symfony.com/doc/current/security.html#registering-the-user-hashing-passwords
+    password_hashers:
+        Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 
+            algorithm: bcrypt
+            cost: 10
+    # https://symfony.com/doc/current/security.html#loading-the-user-the-user-provider
+    providers:
+        # users_in_memory: { memory: null }
+        fact_clientes:
+            id: App\VozFusion\Infrastructure\Security\FactClienteUserProvider
+
+    firewalls:
+        dev:
+            pattern: ^/(_(profiler|wdt)|css|images|js)/
+            security: false
+        api:
+            pattern: ^/api
+            stateless: true
+            custom_authenticators:
+                - lexik_jwt_authentication.jwt_token_authenticator
+        main:
+            pattern: ^/
+            lazy: true
+            provider: fact_clientes  
+            context: session   
+            logout:
+                path: /logout
+                target: /
+            remember_me:
+                secret: '%kernel.secret%'
+                lifetime: 604800
+                path: /
+
+            # activate different ways to authenticate
+            # https://symfony.com/doc/current/security.html#the-firewall
+
+            # https://symfony.com/doc/current/security/impersonating_user.html
+            # switch_user: true
+
+    # Easy way to control access for large sections of your site
+    # Note: Only the *first* access control that matches will be used
+    access_control:
+        # - { path: ^/clientes, roles: IS_AUTHENTICATED_ANONYMOUSLY }
+        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY }
+        # - { path: ^/admin, roles: ROLE_ADMIN }
+        # - { path: ^/profile, roles: ROLE_USER }
+
+when@test:
+    security:
+        password_hashers:
+            Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
+                algorithm: bcrypt
+                cost: 10

@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 9999s
+
+scrape_configs:
+  - job_name: 'springboot'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['springboot:8080']
+
+  - job_name: 'symfony'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['symfony:8000']

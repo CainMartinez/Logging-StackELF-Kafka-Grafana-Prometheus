@@ -1,0 +1,10 @@
+server.name: kibana
+server.host: "0.0.0.0"
+
+elasticsearch.hosts: ["http://elasticsearch:9200"]
+elasticsearch.serviceAccountToken: "your_token_here"
+
+# Claves de encriptación
+xpack.security.encryptionKey: "practicaGestfy_clave_segura_01-segura"
+xpack.encryptedSavedObjects.encryptionKey: "practicaGestfy_clave_segura_02-segura"
+xpack.reporting.encryptionKey: "practicaGestfy_clave_segura_03-segura"

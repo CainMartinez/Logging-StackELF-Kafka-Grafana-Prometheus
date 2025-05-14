@@ -1,0 +1,38 @@
+# see https://symfony.com/doc/current/reference/configuration/framework.html
+framework:
+    secret: '%env(APP_SECRET)%'
+
+    csrf_protection: true
+
+    serializer:
+        default_context:
+            skip_null_values: true
+
+    http_cache:
+        enabled: true
+        default_ttl: 3600
+        allow_reload: true
+        allow_revalidate: true
+        debug: false
+    # Note that the session will be started ONLY if you read or write from it.
+    session:
+        enabled: true
+        handler_id: redis_session_handler
+    cache:
+        pools:
+            doctrine.second_level_cache_pool:
+                adapter: cache.adapter.apcu
+                default_lifetime: 300
+    rate_limiter:
+        register:
+            policy: 'sliding_window'
+            limit: 5
+            interval: '1 minute'
+
+    #esi: true
+    #fragments: true
+
+when@test:
+    framework:
+        test: true
+       

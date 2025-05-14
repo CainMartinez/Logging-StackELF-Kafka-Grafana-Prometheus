@@ -1,0 +1,123 @@
+services:
+  # Coordinador de cluster de Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.9.0
+    container_name: zookeeper
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - shared-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.9.0
+    container_name: kafka
+    restart: unless-stopped
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: |
+        PLAINTEXT://kafka:9092
+        PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      # Para un único consumidor (Logstash)
+      KAFKA_NUM_PARTITIONS: 4
+      KAFKA_COMPRESSION_TYPE: lz4
+      # Buffer y memoria óptimos
+      KAFKA_SOCKET_SEND_BUFFER_BYTES: 1048576
+      KAFKA_SOCKET_RECEIVE_BUFFER_BYTES: 1048576
+      KAFKA_REPLICA_FETCH_MAX_BYTES: 10485760
+      KAFKA_MESSAGE_MAX_BYTES: 10485760
+      # Configuración de memoria
+      KAFKA_HEAP_OPTS: "-Xmx1G -Xms1G"
+    ports:
+      - "9092:9092"      # Puerto interno de Kafka
+      - "29092:29092"    # Puerto “host” para desarrollo local
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - shared-network
+
+  elasticsearch:
+    image: elasticsearch:8.17.4
+    container_name: elasticsearch
+    restart: unless-stopped
+    environment:
+      - node.name=es01
+      - discovery.type=single-node
+      - cluster.name=es-docker-cluster
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms256m -Xmx1024m" # Memoria asignada a Elasticsearch
+      - xpack.security.enabled=true
+      - xpack.security.http.ssl.enabled=false  # Deshabilita SSL en el canal HTTP
+      - ELASTIC_PASSWORD=Password1!
+    ulimits:
+      memlock:
+
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+    volumes:
+      - esdata01:/usr/share/elasticsearch/data
+    networks:
+      - shared-network
+
+  setup:
+    image: curlimages/curl:latest
+    container_name: elk-setup
+    user: root  # Añadir esta línea para ejecutar como root
+    depends_on:
+      - elasticsearch
+    volumes:
+      - ./init/setup.sh:/setup.sh
+      - ./kibana/config:/config
+    command: ["sh", "/setup.sh"]
+    networks:
+      - shared-network
+
+  logstash:
+    image: logstash:8.17.4
+    container_name: logstash
+    restart: unless-stopped
+    depends_on:
+      - elasticsearch
+    ports:
+      - "5000:5000"   # Puerto donde Logstash recibirá los logs
+    volumes:
+      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+    networks:
+      - shared-network
+
+  kibana:
+    image: kibana:8.17.4
+    container_name: kibana
+    restart: unless-stopped
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    ports:
+      - "5601:5601"   # Puerto para acceder a la UI de Kibana
+    volumes:
+      - ./kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+    networks:
+      - shared-network
+
+volumes:
+  esdata01:
+    driver: local
+  kafka-data:
+    driver: local
+
+networks:
+  shared-network:
+    external: true

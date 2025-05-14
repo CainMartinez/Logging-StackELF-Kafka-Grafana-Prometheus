@@ -1,0 +1,77 @@
+services:
+  
+  symfony:
+    build:
+      context: ./Symfony-7.2
+      dockerfile: Dockerfile
+    container_name: symfony
+    volumes:
+      - ./Symfony-7.2:/var/www/Symfony-7.2
+    ports:
+      - "8000:8000"
+    networks:
+      - shared-network
+    
+  # nginx:
+  #   build:
+  #     context: ./Nginx
+  #     dockerfile: Dockerfile
+  #   container_name: symfony-nginx
+  #   ports:
+  #     - "80:80"
+  #   depends_on:
+  #     - symfony
+  #   volumes:
+  #     - ./Symfony-7.2:/var/www/Symfony-7.2
+      
+  # phpdoc:
+  #   image: phpdoc/phpdoc:latest
+  #   container_name: phpdoc-container
+  #   volumes:
+  #     - .:/app
+  #   working_dir: /app
+  #   entrypoint: ["phpdoc"]
+
+  # varnish:
+  #   image: varnish:stable
+  #   container_name: varnish
+  #   ports:
+  #     - "80:80"
+  #   volumes:
+  #     - "./varnish/default.vcl:/etc/varnish/default.vcl"
+  #   depends_on:
+  #     - nginx
+
+  # redis:
+  #   image: redis:latest
+  #   container_name: redis-container
+  #   ports:
+  #     - "6379:6379"
+  #   environment:
+  #     REDIS_PASSWORD: ${REDIS_PASSWORD}
+  #   command: [ "redis-server", "--requirepass", "${REDIS_PASSWORD}" ]
+  #   volumes:
+  #     - redis_data:/data
+  #   networks:
+  #     - shared-network
+  # agent:
+  #   container_name: newrelic-infra
+  #   build:
+  #     context: ./newrelic-infra
+  #     dockerfile: Dockerfile
+  #   cap_add:
+  #     - SYS_PTRACE
+  #   network_mode: host
+  #   pid: host
+  #   privileged: true
+  #   volumes:
+  #     - "/:/host:ro"
+  #     - "/var/run/docker.sock:/var/run/docker.sock"
+  #   restart: unless-stopped
+
+volumes:
+  redis_data:
+
+networks:
+  shared-network:
+    external: true

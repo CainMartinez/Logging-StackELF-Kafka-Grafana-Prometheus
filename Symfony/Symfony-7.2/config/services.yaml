@@ -1,0 +1,156 @@
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters:
+        kafka.logging.enabled: false
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+
+    # makes classes in src/ available to be used as services
+    # this creates a service per class whose id is the fully-qualified class name
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Domain/Entity'
+            - '../src/Kernel.php'
+
+    monolog.formatter.json:
+        class: Monolog\Formatter\JsonFormatter
+
+    App\VozFusion\Domain\PortOut\factClienteRepositoryInterface:
+        alias: App\VozFusion\Infrastructure\AdapterOut\Doctrine\factClienteRepositoryAdapter
+
+    App\VozFusion\Infrastructure\Security\FactClienteUserProvider:
+        arguments:
+            $factClienteRepository: '@App\VozFusion\Infrastructure\AdapterOut\Doctrine\factClienteRepositoryAdapter'
+
+    App\VozFusion\Infrastructure\Session\SessionManager:
+        arguments:
+            $requestStack: '@request_stack'
+
+    App\VozFusion\Presentation\AdapterIn\Processors\LoginFactClienteProcessor:
+        public: true
+        arguments:
+            $handler: '@App\VozFusion\Application\UseCase\Command\Login\LoginFactClienteCommandHandler'
+        tags: ['controller.service_arguments']
+    
+    App\VozFusion\Presentation\AdapterIn\Processors\RegisterFactClienteProcessor:
+        public: true
+
+    Symfony\Component\PasswordHasher\Hasher\PasswordHasherInterface:
+        alias: 'security.password_hasher'
+    
+    App\VozFusion\Presentation\AdapterIn\Processors\LogoutFactClienteProcessor:
+        public: true
+
+    App\VozFusion\Presentation\AdapterIn\Processors\RefreshTokenProcessor:
+        public: true
+
+    App\VozFusion\Domain\PortOut\RefreshTokenRepositoryInterface:
+        alias: App\VozFusion\Infrastructure\AdapterOut\Doctrine\RefreshTokenRepositoryAdapter
+    
+    App\VozFusion\Domain\PortOut\BlacklistedTokenRepositoryInterface:
+        alias: App\VozFusion\Infrastructure\AdapterOut\Doctrine\BlacklistedTokenRepositoryAdapter
+    
+    lexik_jwt_authentication.jwt_token_authenticator:
+        class: Lexik\Bundle\JWTAuthenticationBundle\Security\Authenticator\JWTAuthenticator
+        public: true
+
+    App\VozFusion\Infrastructure\Security\EventListener\JWTEventSubscriber:
+        arguments:
+            $blacklistRepository: '@App\VozFusion\Infrastructure\AdapterOut\Doctrine\BlacklistedTokenRepositoryAdapter'
+            $requestStack: '@request_stack'
+        tags:
+            - { name: kernel.event_listener, event: lexik_jwt_authentication.on_jwt_decoded, method: onJWTDecoded }
+
+    session:
+        class: Symfony\Component\HttpFoundation\Session\Session
+    
+    Symfony\Component\HttpFoundation\Session\SessionInterface:
+        alias: session
+    
+    # Symfony\Component\HttpFoundation\Session\Storage\Handler\PdoSessionHandler:
+    #     arguments:
+    #         - '%env(resolve:DATABASE_URL)%'
+    #         - { db_table: 'sessions' }
+    
+    redis_client:
+        class: Redis
+        calls:
+            - connect: ['%env(REDIS_HOST)%', '%env(int:REDIS_PORT)%']
+            - auth: ['%env(REDIS_PASSWORD)%']
+
+    redis_session_handler:
+        class: Symfony\Component\HttpFoundation\Session\Storage\Handler\RedisSessionHandler
+        arguments:
+            - '@redis_client'
+    
+    App\VozFusion\Infrastructure\Session\RedisSessionManager:
+        arguments:
+            - '@request_stack'
+            - '@redis_client'
+            - 3600
+            
+    App\VozFusion\Infrastructure\AdapterOut\Doctrine\factClienteRepositoryAdapter:
+        arguments:
+            $resultCachePool: '@doctrine.result_cache_pool'
+
+    App\VozFusion\Presentation\AdapterIn\Processors\UpdateFactClienteProcessor:
+        public: true
+        tags: ['controller.service_arguments']
+
+    Redis:
+        alias: redis_client
+
+    App\VozFusion\Presentation\AdapterIn\Providers\InfoDeviceProvider:
+        public: true
+        tags: ['controller.service_arguments']
+
+    App\VozFusion\Domain\PortOut\IntWirelessConfigRepositoryInterface:
+        alias: App\VozFusion\Infrastructure\AdapterOut\Doctrine\IntWirelessConfigRepository
+    
+    App\Tests\E2E\CompareInfoDeviceCommand:
+        public: true
+        arguments:
+            $client: '@http_client'
+        tags: ['console.command']
+    
+    App\VozFusion\Metrics\Controller\MetricsController:
+        public: true
+        autowire: true
+        autoconfigure: true
+        tags: ['controller.service_arguments']
+    
+    App\VozFusion\Metrics\Service\MetricsService:
+        public: true
+        autowire: true
+        arguments:
+            $container: '@service_container'
+            $connection: '@?doctrine.dbal.default_connection'
+            $redis: '@?redis'
+
+    # App\VozFusion\Metrics\EventSubscriber\MetricsSubscriber:
+    #     public: true
+    #     autowire: true
+    #     arguments:
+    #         $metricsService: '@App\VozFusion\Metrics\Service\MetricsService'
+    #         $logger: '@logger'
+    #     tags:
+    #         - { name: kernel.event_subscriber }
+
+    # App\VozFusion\Infrastructure\EventListener\RequestLogSubscriber:
+    #     arguments:
+    #         $requestLogger: '@logger
+    #     tags:
+    #         - { name: kernel.event_subscriber }
+    App\VozFusion\Infrastructure\EventListener\RequestLogSubscriber:
+        arguments:
+            $producer: '@Enqueue\Client\ProducerInterface'  # Usar la interfaz en lugar del ID del servicio
+            $logger: '@logger'    

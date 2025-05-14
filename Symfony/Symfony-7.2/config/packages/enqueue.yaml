@@ -1,0 +1,18 @@
+enqueue:
+    default:
+        transport:
+            dsn: 'rdkafka://'
+            global:
+                bootstrap.servers: 'kafka:9092'
+                metadata.broker.list: 'kafka:9092'
+                # Configuraciones específicas para el productor
+                queue.buffering.max.messages: '100000'
+                message.send.max.retries: '3'
+                request.required.acks: '1'
+            topic:
+                request.required.acks: '1'
+        client:
+            default_queue: 'default'
+            # Opciones válidas según el error
+            app_name: 'gestfy-symfony'
+            traceable_producer: true

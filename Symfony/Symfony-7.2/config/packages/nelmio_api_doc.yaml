@@ -1,0 +1,10 @@
+nelmio_api_doc:
+    documentation:
+        info:
+            title: Symfony
+            description: Swagger Documentation for Symfony
+            version: 7.2.0
+        
+    areas: # to filter documented areas
+        path_patterns:
+            - ^/
